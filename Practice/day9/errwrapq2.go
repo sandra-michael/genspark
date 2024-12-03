@@ -21,8 +21,12 @@ func main() {
 	if err != nil {
 		fmt.Println("There was an error during f1 function call ")
 		fmt.Println("error ", err)
-		//debug.Stack() see's who called it 
-		fmt.Println("stacktrace : ", string(debug.Stack()))
+		//debug.Stack() see's who called it
+		//fmt.Println("stacktrace : ", string(debug.Stack()))
+		if errors.Is(err, ErrFunc3) {
+			fmt.Printf("value must be of int type not string, StackTrace : %v", err)
+			return
+		}
 		return
 	}
 }
@@ -40,6 +44,7 @@ func f2() (int, error) {
 	_, err := f3()
 
 	if err != nil {
+		//if we use %v instead of %w this will not work in errors.Is(err, ErrFunc3)
 		return 0, fmt.Errorf("%w %w", ErrFunc2, err)
 	}
 	return 0, nil

@@ -31,13 +31,12 @@ func main() {
 	//ipVal := "12344569897890090890097878767e2" // throws value out of range -  ErrRange
 	opVal, errs := strToInt(ipVal)
 
-	if errors.Is(errs, ErrStringValue) {
-		fmt.Printf("value must be of int type not string, StackTrace : %v", errs)
-		return
-	}
-
 	if errs != nil {
 		fmt.Println(errs)
+		if errors.Is(errs, ErrStringValue) {
+			fmt.Printf("value must be of int type not string, StackTrace : %v", errs)
+			return
+		}
 		return
 
 	}
