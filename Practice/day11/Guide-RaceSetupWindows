@@ -1,0 +1,7 @@
+installed https://jmeubank.github.io/tdm-gcc/ - install the 64 bit version
+
+added path variable (C:\TDM-GCC-64\x86_64-w64-mingw32\bin) 
+
+restart vscode 
+
+need to enable go env -w CGO_ENABLED=0
