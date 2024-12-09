@@ -13,16 +13,16 @@ func main() {
 	workerwg := new(sync.WaitGroup)
 
 	// select is used when we want to listen or send values to over a multiple channel
-	get := make(chan string)
-	post := make(chan string)
-	put := make(chan string)
+	get := make(chan string, 1)
+	post := make(chan string, 1)
+	put := make(chan string, 2)
 
-	done := make(chan struct{}) // datatype doesn't matter
+	done := make(chan struct{}, 1) // datatype doesn't matter
 
 	workerwg.Add(1)
 	go func() {
 		defer workerwg.Done()
-		time.Sleep(1 * time.Second)
+		//time.Sleep(10 * time.Second)
 		get <- "get"
 
 	}()
@@ -30,7 +30,7 @@ func main() {
 	workerwg.Add(1)
 	go func() {
 		defer workerwg.Done()
-		time.Sleep(50 * time.Millisecond)
+		//time.Sleep(5 * time.Millisecond)
 		post <- "post"
 	}()
 
@@ -43,12 +43,13 @@ func main() {
 	}()
 
 	wg.Add(1)
-	go func ()  {
+	go func() {
 		defer wg.Done()
 		workerwg.Wait()
 		close(done)
-		
+
 	}()
+
 
 	// not efficient // because we have to wait for get even if it is taking long time execute
 	//fmt.Println(<-get)
@@ -72,9 +73,12 @@ func main() {
 	//	}
 	//}
 	//close(done) // close is a send signal, and select can recv it
+	time.Sleep(1 * time.Second)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		
+
 		for {
 			select {
 			case g := <-get:
@@ -90,6 +94,9 @@ func main() {
 			}
 		}
 	}()
+
+	
+
 	wg.Wait()
 
 }
