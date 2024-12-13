@@ -1,0 +1,17 @@
+
+CREATE TABLE IF NOT EXISTS author (
+    id SERIAL PRIMARY KEY,
+    name text NOT NULL,
+    email text UNIQUE NOT NULL
+
+);
+
+
+INSERT INTO author (name, email)
+VALUES ('John Doe', 'john.doe@example.com');
+
+
+INSERT INTO author (name, email)
+VALUES ('Jane Smith', 'jane.smith@example.com');
+
+

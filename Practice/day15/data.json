@@ -1,0 +1,23 @@
+[
+  {
+    "first_name": "John",
+    "password_hash": "\u003c#$%^\u0026*(*\u0026^%$\u003e",
+    "perms": {
+      "admin": true
+    }
+  },
+  {
+    "first_name": "Jane",
+    "password_hash": "\u003c$%^\u0026*()\u003e",
+    "perms": {
+      "admin": false
+    }
+  },
+  {
+    "first_name": "Bob",
+    "password_hash": "\u003c$%^\u0026*(\u003e",
+    "perms": {
+      "admin": true
+    }
+  }
+]
