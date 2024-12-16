@@ -13,3 +13,10 @@ q. Develop a REST API for a task management system.
 
    Try if you can achieve this
    - Decouple the handlers from actual implementation using interfaces
+
+// Steps
+	/*
+		1. Add transactions
+		2. Add validation to models.Book
+		3. If validation fails then rollback the update and report some error to the user
+	*/
