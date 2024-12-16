@@ -1,0 +1,15 @@
+q. Develop a REST API for a task management system.
+   Use gin or chi
+# Task Management APIs
+   POST    /api/v1/tasks                 # Create a new task
+   GET     /api/v1/tasks/:id             # Get a specific task by ID
+   GET     /api/v1/tasks                 # Get all tasks (filter/sort optional)
+   PUT     /api/v1/tasks/:id             # Update task details
+   DELETE  /api/v1/tasks/:id             # Delete a task
+   PATCH   /api/v1/tasks/:id/status      # Update task status (e.g., In Progress, Done)
+
+   Store tasks in postgres
+   Organize your code in different packages
+
+   Try if you can achieve this
+   - Decouple the handlers from actual implementation using interfaces
