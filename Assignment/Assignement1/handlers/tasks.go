@@ -106,12 +106,10 @@ func (h *Handler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-
 	err = h.c.UpdateTaskStatus(r.Context(), id)
 	if err != nil {
 		fmt.Println("Error fetching tasks", err)
-		http.Error(w, "Error while recieving tasks", http.StatusExpectationFailed)
+		http.Error(w, err.Error(), http.StatusExpectationFailed)
 		return
 	}
 
@@ -151,7 +149,7 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 	err = h.c.UpdateTask(r.Context(), id, updateTask)
 	if err != nil {
 		fmt.Println("Error fetching tasks", err)
-		http.Error(w, "Error while recieving tasks", http.StatusExpectationFailed)
+		http.Error(w, err.Error(), http.StatusExpectationFailed)
 		return
 	}
 

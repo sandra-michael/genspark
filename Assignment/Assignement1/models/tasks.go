@@ -153,6 +153,12 @@ func (c *Conn) UpdateTaskStatus(ctx context.Context, id int) error {
 	if err != nil {
 		return fmt.Errorf("unable to fetch task: %w", err)
 	}
+	if task.Status == "" {
+		return fmt.Errorf("Id doesnot exist to update")
+	}
+	// if len(data) == 0 {
+	// 	return fmt.Errorf("Id doesnot exist to update")
+	// }
 
 	updateStatus := "NEW"
 	switch task.Status {
@@ -169,7 +175,7 @@ func (c *Conn) UpdateTaskStatus(ctx context.Context, id int) error {
 
 	_, err = c.db.Exec(context.Background(), query, updateStatus, id)
 	if err != nil {
-		log.Fatal("Unable to update task: %v\n", err) // Log and terminate if update fails
+		fmt.Println("Unable to update task: %v\n", err) // Log and terminate if update fails
 		return fmt.Errorf("unable to update task: %w", err)
 	}
 	fmt.Println("User status updated")
@@ -184,6 +190,17 @@ func (c *Conn) UpdateTask(ctx context.Context, id int, updateTask UpdateTask) er
 		2. Add validation to models.Book
 		3. If validation fails then rollback the update and report some error to the user
 	*/
+	tx, err := c.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		} else {
+			tx.Commit(ctx)
+		}
+	}()
 	selectQuery := `
 		SELECT
 			id, name, description, status
@@ -196,7 +213,8 @@ func (c *Conn) UpdateTask(ctx context.Context, id int, updateTask UpdateTask) er
 	var task Task
 
 	// Execute the query and scan the result into the book struct
-	err := c.db.QueryRow(ctx, selectQuery, id).Scan(
+	//tx.Conn().QueryRow()
+	err = tx.Conn().QueryRow(ctx, selectQuery, id).Scan(
 		&task.ID,
 		&task.Name,
 		&task.Description,
@@ -209,22 +227,14 @@ func (c *Conn) UpdateTask(ctx context.Context, id int, updateTask UpdateTask) er
 	if err != nil {
 		return fmt.Errorf("unable to marshal task: %w", err)
 	}
+	if len(data) == 0 {
+		return fmt.Errorf("Id doesnot exist to update")
+	}
 	err = json.Unmarshal(data, &task)
 	if err != nil {
 		return fmt.Errorf("unable to unmarshal task: %w", err)
 	}
 
-	tx, err := c.db.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		} else {
-			tx.Commit(ctx)
-		}
-	}()
 	query := `
 		UPDATE tasks
 		SET name = $1, description = $2, status = $3
