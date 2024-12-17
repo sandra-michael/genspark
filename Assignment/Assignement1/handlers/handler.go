@@ -8,15 +8,17 @@ import (
 )
 
 type Handler struct {
-	c        *models.Conn
+	//here we are adding service layer and are decoupling the use of *models.COnn
+	//this helps with testing
+	c        models.Service
 	validate *validator.Validate
 }
 
-func NewConf(c *models.Conn, validate *validator.Validate) *Handler {
+func NewConf(c models.Service, validate *validator.Validate) *Handler {
 	return &Handler{c: c, validate: validate}
 }
 
-func SetUpTaskRoute(conn *models.Conn) *chi.Mux {
+func SetUpTaskRoute(conn models.Service) *chi.Mux {
 	h := NewConf(conn, validator.New())
 	mux := chi.NewRouter()
 

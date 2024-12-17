@@ -35,7 +35,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 	err = h.validate.Struct(newTask)
 	if err != nil {
 		fmt.Println("validation failed error", err)
-		http.Error(w, "Error while validation", http.StatusExpectationFailed)
+		http.Error(w, "Error while validation"+err.Error(), http.StatusExpectationFailed)
 		return
 	}
 
