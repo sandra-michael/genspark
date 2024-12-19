@@ -1,0 +1,41 @@
+FROM golang:1.23.3-alpine AS builder
+
+
+WORKDIR /app
+
+RUN apk add --no-cache git
+
+ENV GOOS=linux
+ENV GOARCH=amd64
+ENV GOPROXY=direct
+
+# Cache dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the source code into the container
+COPY . .
+
+# Copy go.mod and go.sum first to leverage layer caching
+#COPY go.mod go.sum ./
+#if copy go.mod and go.sum before then run go mod tidy and download immediately
+# it would cache the layer so both command would only run if there any changes in go.mod or go.sum
+# Download and cache dependencies
+#RUN go mod download
+
+# Run go mod tidy to ensure that dependencies are consistent
+#RUN go mod tidy
+
+
+RUN go build -o micro-1 .
+
+# Stage 2: Create the runtime image
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/micro-1 .
+
+EXPOSE 80
+
+CMD ["/app/micro-1"]
