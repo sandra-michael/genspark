@@ -22,12 +22,12 @@ import (
 
 func main() {
 
-		// Step 1: Initialize OpenTelemetry
-		traceProvider, err := initOpenTelemetry()
-		if err != nil {
-			panic(err)
-		}
-		defer traceProvider.Shutdown(context.Background())
+	// Step 1: Initialize OpenTelemetry
+	traceProvider, err := initOpenTelemetry()
+	if err != nil {
+		panic(err)
+	}
+	defer traceProvider.Shutdown(context.Background())
 	// initialize http service
 	//chi, http.DefaultServeMux, gin
 	api := http.Server{
@@ -73,7 +73,6 @@ func main() {
 	}
 
 }
-
 
 func initOpenTelemetry() (*trace.TracerProvider, error) {
 	// Set up the OTLP trace exporter to send tracing data to the OpenTelemetry Collector
