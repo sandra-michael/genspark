@@ -8,7 +8,7 @@ services:
     networks:
       - web
 
-  hello-service:
+  hello-service.sandra:
     build: ./hello-service
     container_name: hello-service
     #since micro 2 is calling micro 1
@@ -19,7 +19,7 @@ services:
     networks:
       - web
 
-  gateway-service:
+  gateway-service.sandra:
     build: ./gateway-service
     container_name: gateway-service
     ports:
