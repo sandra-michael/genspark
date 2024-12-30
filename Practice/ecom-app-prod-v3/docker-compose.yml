@@ -93,8 +93,8 @@ services:
   product-service.diwakar:
     build: ./product-service
     container_name: product-service
-    ports:
-      - "8083:8083"
+    # ports:
+    #   - "8083:8083"
     depends_on:
       - consul.diwakar
     networks:

@@ -160,6 +160,10 @@ func RupeesToPaise(priceStr string) (uint64, error) {
 	}
 
 	if len(prices) == 2 {
+
+		if len(prices[1]) > 2 {
+			return 0, fmt.Errorf("invalid price, please provide price in valid format")
+		}
 		paisa, err = strconv.ParseUint(prices[1], 10, 64)
 		if err != nil || paisa > 99 {
 			return 0, fmt.Errorf("invalid price, please provide price in valid format")

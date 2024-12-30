@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"product-service/handlers"
+	"product-service/internal/consul"
 	"product-service/internal/products"
 	"product-service/internal/stores/postgres"
 	"syscall"
@@ -49,8 +50,8 @@ func startApp() error {
 	//setting up http server
 	port := os.Getenv("PORT")
 	if port == "" {
-		//port = "80"
-		port = "8083"
+		port = "80"
+		//port = "8083"
 	}
 
 	api := http.Server{
@@ -65,6 +66,19 @@ func startApp() error {
 	go func() {
 		serverErrors <- api.ListenAndServe()
 	}()
+
+	/*
+			//------------------------------------------------------//
+		               Registering with Consul
+			//------------------------------------------------------//
+	*/
+
+	consulClient, regId, err := consul.RegisterWithConsul()
+	if err != nil {
+		return err
+	}
+
+	defer consulClient.Agent().ServiceDeregister(regId)
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM, os.Kill)
