@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"product-service/handlers"
 	"product-service/internal/consul"
 	"product-service/internal/products"
+	"product-service/internal/stores/kafka"
 	"product-service/internal/stores/postgres"
 	"syscall"
 	"time"
@@ -46,6 +48,31 @@ func startApp() error {
 	if err != nil {
 		return err
 	}
+
+	/*
+		/*
+			//------------------------------------------------------//
+			//   Consuming Kafka TOPICS [ORDER SERVICE EVENTS]
+			//------------------------------------------------------//
+	*/
+	go func() {
+		ch := make(chan kafka.ConsumeResult)
+		go kafka.ConsumeMessage(context.Background(), kafka.TopicOrderPaid, kafka.ConsumerGroup, ch)
+		for v := range ch {
+			if v.Err != nil {
+				fmt.Println(v.Err)
+				continue
+			}
+			fmt.Printf("Consumed message: %s", string(v.Record.Value))
+			var event kafka.OrderPaidEvent
+			json.Unmarshal(v.Record.Value, &event)
+			// create a method over internal/products to decrement the stock value by quantity
+			fmt.Println("decrement the stock of the product")
+			p.UpdateProducts(context.Background(), event.ProductId)
+			fmt.Println("successfully decremented the stock of the product")
+
+		}
+	}()
 
 	//setting up http server
 	port := os.Getenv("PORT")

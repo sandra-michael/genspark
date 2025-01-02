@@ -97,3 +97,40 @@ func (c *Conf) withTx(ctx context.Context, fn func(*sql.Tx) error) error {
 	// Return nil if the function executes successfully and the transaction is committed.
 	return nil
 }
+
+func (c *Conf) UpdateProducts(ctx context.Context, productId string) error {
+	updatedAt := time.Now().UTC() // Current timestamp
+
+	// Use a transaction to ensure consistency
+	err := c.withTx(ctx, func(tx *sql.Tx) error {
+
+		// Step 3: Perform the update since the `updated_at` condition is met
+		queryUpdate := `
+		UPDATE products
+		SET stock = stock - 1,  updated_at = $2
+		WHERE id = $1 AND stock > 0;
+
+		`
+
+		res, err := tx.ExecContext(ctx, queryUpdate, productId, updatedAt)
+		if err != nil {
+			return fmt.Errorf("failed to update order: %w", err)
+		}
+
+		num, err := res.RowsAffected()
+		if num == 0 || err != nil {
+			return fmt.Errorf("failed to update order: %w", err)
+		}
+
+		// Successfully updated the order
+		return nil
+	})
+
+	if err != nil {
+		// Return the error, if any
+		return err
+	}
+
+	// Return nil if the update is successful or skipped gracefully
+	return nil
+}
