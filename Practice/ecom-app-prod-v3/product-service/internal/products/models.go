@@ -25,6 +25,12 @@ type NewProduct struct {
 	Stock       string `json:"stock" validate:"required,min=2,max=100"`
 }
 
+// keeping it simple this is json which will be returned
+type ProductOrder struct {
+	PriceId string `json:"price_id"`
+	Stock   int `json:"stock"`
+}
+
 //required: The roles field is mandatory.
 //unique: Ensures there are no duplicate roles in the array (requires the validator's unique tag to be supported).
 //dive: Applies validation rules to each individual element of the slice.

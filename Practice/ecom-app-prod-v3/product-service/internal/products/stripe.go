@@ -47,8 +47,8 @@ func (c *Conf) CreatePricingStripe(ctx context.Context, productId string, val ui
 			}
 
 			params := &stripe.PriceParams{
-				Currency:   stripe.String(string(stripe.CurrencyUSD)),
-				UnitAmount: stripe.Int64(1000),
+				Currency:   stripe.String(string(stripe.CurrencyINR)),
+				UnitAmount: stripe.Int64(int64(val)),
 
 				ProductData: &stripe.PriceProductDataParams{Name: stripe.String(prodName)},
 			}
@@ -104,4 +104,34 @@ func (c *Conf) CreatePricingStripe(ctx context.Context, productId string, val ui
 
 	// Step 17: If everything succeeds, return `nil`
 	return nil
+}
+
+func (c *Conf) GetStripeProductDetails(ctx context.Context, productId string) (ProductOrder, error) {
+	var prodOrder ProductOrder
+	//var stock int
+	//var price_id string
+
+	// SQL query to retrieve the Stripe customer ID for the given user ID
+	query := `
+	select pr.stock as stock, pps.price_id as price_id
+	from products pr
+	inner join product_pricing_stripe pps on pr.id = pps.product_id
+	where pr.id = $1
+	`
+	err := c.withTx(ctx, func(tx *sql.Tx) error {
+		err := tx.QueryRowContext(ctx, query, productId).Scan(&prodOrder.Stock, &prodOrder.PriceId)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("no stripe price id  found for product %s: %w", productId, err)
+			}
+			return fmt.Errorf("failed to fetch stripe price id: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return ProductOrder{}, err
+	}
+
+	return prodOrder, nil
+
 }

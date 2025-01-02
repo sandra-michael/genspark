@@ -47,6 +47,10 @@ func API(p *products.Conf) *gin.Engine {
 	{
 		v1.POST("/", h.createProduct)
 
+		//v1.GET("/stock/:productID"
+		//fetch PriceId , stock
+		v1.GET("/stock/:productID", h.getProductOrderDetail)
+
 	}
 
 	//TODO CREATE API

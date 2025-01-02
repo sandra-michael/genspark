@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"net/http"
 	"os"
 	"user-service/internal/auth"
@@ -11,6 +9,9 @@ import (
 	"user-service/internal/users"
 	"user-service/middleware"
 	"user-service/pkg/ctxmanage"
+
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 type Handler struct {
@@ -64,6 +65,7 @@ func API(u *users.Conf, a *auth.Keys, k *kafka.Conf) *gin.Engine {
 			}
 			c.JSON(200, gin.H{"Auth Check": "You are authenticated " + claims.Subject})
 		})
+		v1.GET("/stripe", h.GetStripeDetails)
 	}
 	return r
 }

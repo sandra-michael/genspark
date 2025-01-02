@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/stripe/stripe-go/v81"
-	"github.com/stripe/stripe-go/v81/customer"
 	"log/slog"
 	"os"
 	"time"
 	"user-service/pkg/logkey"
+
+	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v81/customer"
 )
 
 func (c *Conf) CreateCustomerStripe(ctx context.Context, userId, name, email string) error {
@@ -97,4 +98,31 @@ func (c *Conf) CreateCustomerStripe(ctx context.Context, userId, name, email str
 
 	// Step 17: If everything succeeds, return `nil`
 	return nil
+}
+
+func (c *Conf) GetStripeCustomerID(ctx context.Context, userId string) (string, error) {
+	var stripeCustomerId string
+
+	// SQL query to retrieve the Stripe customer ID for the given user ID
+	query := `
+	SELECT stripe_customer_id
+	FROM users_stripe
+	WHERE user_id = $1
+	`
+	err := c.withTx(ctx, func(tx *sql.Tx) error {
+		err := tx.QueryRowContext(ctx, query, userId).Scan(&stripeCustomerId)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("no stripe customer id found for user %s: %w", userId, err)
+			}
+			return fmt.Errorf("failed to fetch stripe customer id: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return stripeCustomerId, nil
+
 }
