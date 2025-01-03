@@ -1,7 +1,7 @@
 
 services:
   # Service Discovery
-  consul.diwakar:
+  consul.sandra:
     container_name: consul-service
     image: hashicorp/consul:1.20
     ports:
@@ -12,13 +12,13 @@ services:
 
   # Gateway Service Containers
 #########################################
-  gateway-service.diwakar:
+  gateway-service.sandra:
     build: ./gateway-service
     container_name: gateway-service
     ports:
       - "80:80"
     depends_on:
-      - consul.diwakar
+      - consul.sandra
     networks:
       - web
 
@@ -28,17 +28,17 @@ services:
 # User-Service containers
 #######################################
 
-  user-service.diwakar:
+  user-service.sandra:
     build: ./user-service
     container_name: user-service
     depends_on:
-      - consul.diwakar
+      - consul.sandra
     networks:
       - web
 
-  user-postgres.diwakar:
+  user-postgres.sandra:
     image: postgres:16.3-alpine
-    container_name: user-postgres.diwakar
+    container_name: user-postgres.sandra
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -51,7 +51,7 @@ services:
     networks:
       - web
 
-  kafka-user-service.diwakar:
+  kafka-user-service.sandra:
     image: apache/kafka:3.9.0
     container_name: kafka-user-service
     ports:
@@ -60,7 +60,7 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://localhost:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-user-service.diwakar:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-user-service.sandra:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
@@ -78,12 +78,12 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - kafka-user-service.diwakar
+      - kafka-user-service.sandra
     environment:
       KAFKA_CLUSTERS_0_NAME: user-service-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-user-service.diwakar:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-user-service.sandra:9092
       KAFKA_CLUSTERS_1_NAME: order-service-cluster
-      KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS: kafka-order-service.diwakar:9092
+      KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS: kafka-order-service.sandra:9092
       DYNAMIC_CONFIG_ENABLED: 'true'
     networks:
       - web
@@ -92,14 +92,14 @@ services:
   # Product Service Containers
   #######################################
 
-  product-service.diwakar:
+  product-service.sandra:
     build: ./product-service
     container_name: product-service
     #    ports:
     #      - "8081:80"
     depends_on:
-      - consul.diwakar
-      - product-postgres.diwakar
+      - consul.sandra
+      - product-postgres.sandra
     environment:
       - CONSUL_HTTP_ADDR=consul:8500
     networks:
@@ -107,9 +107,9 @@ services:
     volumes: #setting the data directory in the project
       - ./project-db/order-postgres/postgres/:/var/lib/postgresql/data/
 
-  product-postgres.diwakar:
+  product-postgres.sandra:
     image: postgres:16.3-alpine
-    container_name: product-postgres.diwakar
+    container_name: product-postgres.sandra
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -124,20 +124,20 @@ services:
   # Order Service Containers
   #######################################
 
-  order-service.diwakar:
+  order-service.sandra:
     build: ./order-service
     container_name: order-service
     ports:
       - "8082:80"
     depends_on:
-      - consul.diwakar
-      - order-postgres.diwakar
+      - consul.sandra
+      - order-postgres.sandra
     networks:
       - web
 
-  order-postgres.diwakar:
+  order-postgres.sandra:
     image: postgres:16.3-alpine
-    container_name: order-postgres.diwakar
+    container_name: order-postgres.sandra
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -148,7 +148,7 @@ services:
     networks:
       - web
 
-  kafka-order-service.diwakar:
+  kafka-order-service.sandra:
     image: apache/kafka:3.9.0
     container_name: kafka-order-service
     ports:

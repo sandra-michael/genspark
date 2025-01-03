@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"product-service/internal/auth"
 	"product-service/internal/products"
 	"product-service/middleware"
 	"product-service/pkg/ctxmanage"
@@ -24,12 +25,14 @@ func NewHandler(p *products.Conf) *Handler {
 	}
 }
 
-func API(p *products.Conf) *gin.Engine {
+func API(p *products.Conf, k *auth.Keys) *gin.Engine {
 	r := gin.New()
 	mode := os.Getenv("GIN_MODE")
 	if mode == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
+	m := middleware.NewMid(k)
 
 	h := NewHandler(p)
 
@@ -45,11 +48,14 @@ func API(p *products.Conf) *gin.Engine {
 
 	v1 := r.Group(prefix)
 	{
-		v1.POST("/", h.createProduct)
 
 		//v1.GET("/stock/:productID"
 		//fetch PriceId , stock
 		v1.GET("/stock/:productID", h.getProductOrderDetail)
+
+		v1.Use(m.Authentication())
+
+		v1.POST("/", m.Authorize(h.createProduct, auth.RoleAdmin))
 
 	}
 
