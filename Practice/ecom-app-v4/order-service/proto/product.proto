@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package proto;
+
+// Sets the Go package where structs generated from this .proto will be placed.
+// If omitted, the Go package will be derived from the file path.
+option go_package = "gen/proto";
+
+// Represents detailed information about a product order.
+message ProductOrderDetails {
+    string price_id = 1; // ID of the product price.
+    int64 stock = 2;     // Available stock for the product.
+}
+
+// Request message for retrieving product order details.
+message ProductOrderRequest {
+    string product_id = 1; // The ID of the product being queried.
+}
+
+// Response message containing product order details.
+message ProductOrderResponse {
+    ProductOrderDetails prod_order = 1; // Details of the product order.
+}
+
+// Service definition for product-related operations.
+service ProductService {
+    // Unary RPC for fetching product order details.
+    rpc GetProductOrderDetail(ProductOrderRequest) returns (ProductOrderResponse);
+}
