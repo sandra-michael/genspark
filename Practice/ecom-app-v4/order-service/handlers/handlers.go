@@ -46,7 +46,7 @@ func API(endpointPrefix string, k *auth.Keys, client *consulapi.Client, o *order
 		v1.Use(m.Authentication())
 		v1.POST("/checkout/:productID", h.Checkout)
 		v1.POST("/checkout/v2/:productID", h.CheckoutWithGrpc)
-		v1.POST("/cartcheckout/v2/", h.CartCheckout)
+		v1.POST("/cartcheckout/v2/:orderId", h.CartCheckout)
 		v1.GET("/ping", HealthCheck)
 	}
 

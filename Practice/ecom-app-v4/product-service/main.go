@@ -133,7 +133,10 @@ func startApp() error {
 			fmt.Println("decrement the stock of the product")
 			//TODO dynamically decrement stock
 			//for now we are decrementing for one product
-			p.DecrementStock(context.Background(), event.ProductId, event.Quantity)
+			ctx := context.Background()
+			p.DecrementStock(ctx, event.ProductId, event.Quantity)
+			fmt.Println("decrement the stock of the product", event.OrderId)
+			p.UpdateCartStatusForOrderId(ctx, event.OrderId)
 			fmt.Println("successfully decremented the stock of the product")
 
 		}
@@ -172,6 +175,19 @@ func startApp() error {
 		}
 	}()
 
+	/*
+			//------------------------------------------------------//
+		               Registering with Consul
+			//------------------------------------------------------//
+	*/
+
+	consulClient, regId, err := consul.RegisterWithConsul()
+	if err != nil {
+		return err
+	}
+
+	defer consulClient.Agent().ServiceDeregister(regId)
+
 	//setting up http server
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -185,25 +201,12 @@ func startApp() error {
 		WriteTimeout: 800 * time.Second,
 		IdleTimeout:  800 * time.Second,
 		//handlers.API returns gin.Engine which implements Handler Interface
-		Handler: handlers.API(p, k),
+		Handler: handlers.API(consulClient, p, k),
 	}
 	serverErrors := make(chan error)
 	go func() {
 		serverErrors <- api.ListenAndServe()
 	}()
-
-	/*
-			//------------------------------------------------------//
-		               Registering with Consul
-			//------------------------------------------------------//
-	*/
-
-	consulClient, regId, err := consul.RegisterWithConsul()
-	if err != nil {
-		return err
-	}
-
-	defer consulClient.Agent().ServiceDeregister(regId)
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM, os.Kill)

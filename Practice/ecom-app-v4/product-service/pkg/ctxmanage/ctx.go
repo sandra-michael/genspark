@@ -1,7 +1,10 @@
 package ctxmanage
 
 import (
+	"context"
+	"errors"
 	"log/slog"
+	"product-service/internal/auth"
 	"product-service/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -17,4 +20,15 @@ func GetTraceIdOfRequest(c *gin.Context) string {
 		traceId = "Unknown"
 	}
 	return traceId
+}
+
+func GetAuthClaimsFromContext(ctx context.Context) (auth.Claims, error) {
+
+	// checking if auth claims is present in the context or not
+	// type assertion, making sure the value is of type auth.Claims
+	claims, ok := ctx.Value(auth.ClaimsKey).(auth.Claims)
+	if !ok {
+		return auth.Claims{}, errors.New("claims not present in the context")
+	}
+	return claims, nil
 }

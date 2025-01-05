@@ -427,6 +427,11 @@ func (h *Handler) CartCheckout(c *gin.Context) {
 		return
 	}
 
+	orderId := c.Param("orderId")
+	if orderId == "" {
+		orderId = uuid.NewString()
+	}
+
 	// Validate that the list is not empty
 	if len(req.LineItems) < 1 {
 		slog.Error(
@@ -594,7 +599,6 @@ func (h *Handler) CartCheckout(c *gin.Context) {
 
 	// Step 2: Assign the Stripe API key to the Stripe library's internal configuration
 	stripe.Key = sKey
-	orderId := uuid.NewString()
 
 	// Convert struct to JSON string
 	reqJSON, err := json.Marshal(req)
@@ -641,13 +645,17 @@ func (h *Handler) CartCheckout(c *gin.Context) {
 	//TODO change string(reqJSON) to prod id
 	slog.Info("successfully initiated Stripe checkout session", slog.String("Trace ID", traceId), slog.String("ProductID", string(reqJSON)), slog.String("CheckoutSessionID", sessionStripe.ID))
 
+	slog.Info("successfully initiated Stripe checkout session", slog.String("CheckoutSessionID", sessionStripe.URL))
+
 	// Respond with the Stripe session ID
 	//c.JSON(http.StatusOK, gin.H{"checkout_session_id": sessionStripe.URL})
 	userId := claims.Subject
 	ctx := c.Request.Context()
 	//TODO chnge string(reqJSON) for productId
-	err = h.o.CreateOrder(ctx, orderId, userId, productIds[1], sessionStripe.AmountTotal)
+	fmt.Println(orderId, userId, productIds[0], sessionStripe.AmountTotal)
+	err = h.o.CreateOrder(ctx, orderId, userId, productIds[0], sessionStripe.AmountTotal)
 	if err != nil {
+		fmt.Println(err)
 		slog.Error("error creating order", slog.String(logkey.TraceID, traceId), slog.String(logkey.ERROR, err.Error()))
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "Failed to create order"})
 		return

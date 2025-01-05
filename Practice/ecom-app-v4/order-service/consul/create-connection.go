@@ -2,8 +2,9 @@ package consul
 
 import (
 	"fmt"
-	consulapi "github.com/hashicorp/consul/api"
 	"time"
+
+	consulapi "github.com/hashicorp/consul/api"
 )
 
 func CreateConnection() (*consulapi.Client, error) {
@@ -12,7 +13,7 @@ func CreateConnection() (*consulapi.Client, error) {
 
 	// Set the Consul server URL in the configuration.
 	// This is where the Consul client will attempt to connect for service discovery or KV operations.
-	config.Address = "http://consul.diwakar:8500"
+	config.Address = "http://consul.sandra:8500"
 
 	// Record the current time. This will be used to enforce a timeout of 10 minutes for the connection attempt.
 	t := time.Now()

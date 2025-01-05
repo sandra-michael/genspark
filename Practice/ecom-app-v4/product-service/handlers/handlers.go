@@ -11,21 +11,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	consulapi "github.com/hashicorp/consul/api"
 )
 
 type Handler struct {
+	client   *consulapi.Client
 	p        *products.Conf
 	validate *validator.Validate
 }
 
-func NewHandler(p *products.Conf) *Handler {
+func NewHandler(client *consulapi.Client, p *products.Conf) *Handler {
 	return &Handler{
+		client:   client,
 		p:        p,
 		validate: validator.New(),
 	}
 }
 
-func API(p *products.Conf, k *auth.Keys) *gin.Engine {
+func API(client *consulapi.Client, p *products.Conf, k *auth.Keys) *gin.Engine {
 	r := gin.New()
 	mode := os.Getenv("GIN_MODE")
 	if mode == "release" {
@@ -34,7 +37,7 @@ func API(p *products.Conf, k *auth.Keys) *gin.Engine {
 
 	m := middleware.NewMid(k)
 
-	h := NewHandler(p)
+	h := NewHandler(client, p)
 
 	prefix := os.Getenv("SERVICE_ENDPOINT_PREFIX")
 	if prefix == "" {
@@ -60,6 +63,9 @@ func API(p *products.Conf, k *auth.Keys) *gin.Engine {
 		v1.POST("/", m.Authorize(h.createProduct, auth.RoleAdmin))
 
 		v1.PATCH("/:productID", m.Authorize(h.updateProduct, auth.RoleAdmin))
+
+		v1.POST("/addtocart", h.addToCart)
+		v1.POST("/checkout", h.checkout)
 
 	}
 
