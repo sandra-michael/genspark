@@ -14,7 +14,7 @@ func (p ProtoHandler) GetProductOrderDetail(ctx context.Context, req *pb.Product
 
 	productID := req.GetProductId()
 
-	prodOrder, err := p.prodConf.GetStripeProductDetails(ctx, productID)
+	prodOrder, err := p.prodConf.GetStripeProductDetail(ctx, productID)
 
 	if err != nil {
 		//TODO add trace id
@@ -31,3 +31,4 @@ func (p ProtoHandler) GetProductOrderDetail(ctx context.Context, req *pb.Product
 	}
 	return &pb.ProductOrderResponse{ProdOrder: pbProdOrder}, nil
 }
+

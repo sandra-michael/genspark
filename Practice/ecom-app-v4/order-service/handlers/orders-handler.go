@@ -319,6 +319,7 @@ func (h *Handler) CheckoutWithGrpc(c *gin.Context) {
 	}()
 
 	// Set a timeout (e.g., 10 seconds)
+	//TODO remove and test out why product channel is not benig picked up
 	timeout := time.After(100 * time.Second)
 
 	select {

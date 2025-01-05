@@ -52,10 +52,14 @@ func API(p *products.Conf, k *auth.Keys) *gin.Engine {
 		//v1.GET("/stock/:productID"
 		//fetch PriceId , stock
 		v1.GET("/stock/:productID", h.getProductOrderDetail)
+		v1.GET("/", h.fetchAllProducts)
+		v1.POST("/stock/", h.getProductOrderDetails)
 
 		v1.Use(m.Authentication())
 
 		v1.POST("/", m.Authorize(h.createProduct, auth.RoleAdmin))
+
+		v1.PATCH("/:productID", m.Authorize(h.updateProduct, auth.RoleAdmin))
 
 	}
 

@@ -28,10 +28,33 @@ type NewProduct struct {
 // keeping it simple this is json which will be returned
 type ProductOrder struct {
 	PriceId string `json:"price_id"`
-	Stock   int `json:"stock"`
+	Stock   int    `json:"stock"`
 }
 
 //required: The roles field is mandatory.
 //unique: Ensures there are no duplicate roles in the array (requires the validator's unique tag to be supported).
 //dive: Applies validation rules to each individual element of the slice.
 //oneof=user admin: Restricts each role value to either user or admin.
+
+type ProductDetail struct {
+	ID          string `json:"id"` // UUID
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       string `json:"price"`
+	Stock       string `json:"stock"`
+}
+
+// Product Order request
+type ProductOrdersRequest struct {
+	ProductIDs []string `json:"productIds" binding:"required"`
+}
+
+// ProductUpdateRequest represents the fields that can be updated
+type ProductUpdateRequest struct {
+	Name        string `json:"name,omitempty" validate:"omitempty,min=2,max=100"`        // Valid email required
+	Description string `json:"description,omitempty" validate:"omitempty,min=2,max=100"` // Password must be at least 5 characters long
+	//TODO allow when stripe proce update is sorted
+	//Price       string `json:"price,omitempty" validate:"omitempty,min=2,max=100"`
+	Category string `json:"category,omitempty" validate:"omitempty,min=2,max=100"`
+	Stock    string `json:"stock,omitempty" validate:"omitempty,min=2,max=100"`
+}

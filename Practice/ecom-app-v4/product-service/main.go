@@ -131,7 +131,9 @@ func startApp() error {
 			json.Unmarshal(v.Record.Value, &event)
 			// create a method over internal/products to decrement the stock value by quantity
 			fmt.Println("decrement the stock of the product")
-			p.UpdateProducts(context.Background(), event.ProductId)
+			//TODO dynamically decrement stock
+			//for now we are decrementing for one product
+			p.DecrementStock(context.Background(), event.ProductId, 1)
 			fmt.Println("successfully decremented the stock of the product")
 
 		}
