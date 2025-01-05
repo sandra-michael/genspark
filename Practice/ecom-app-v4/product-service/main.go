@@ -133,7 +133,7 @@ func startApp() error {
 			fmt.Println("decrement the stock of the product")
 			//TODO dynamically decrement stock
 			//for now we are decrementing for one product
-			p.DecrementStock(context.Background(), event.ProductId, 1)
+			p.DecrementStock(context.Background(), event.ProductId, event.Quantity)
 			fmt.Println("successfully decremented the stock of the product")
 
 		}

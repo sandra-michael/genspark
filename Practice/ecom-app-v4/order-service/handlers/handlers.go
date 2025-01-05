@@ -46,6 +46,7 @@ func API(endpointPrefix string, k *auth.Keys, client *consulapi.Client, o *order
 		v1.Use(m.Authentication())
 		v1.POST("/checkout/:productID", h.Checkout)
 		v1.POST("/checkout/v2/:productID", h.CheckoutWithGrpc)
+		v1.POST("/cartcheckout/v2/", h.CartCheckout)
 		v1.GET("/ping", HealthCheck)
 	}
 
@@ -56,4 +57,28 @@ func HealthCheck(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "pong",
 	})
+}
+
+type UserServiceResponse struct {
+	StripCustomerId string `json:"stripe_customer_id"`
+}
+
+type LineItem struct {
+	ProductId string `json:"productId" binding:"required"`
+	Quantity  uint64 `json:"quantity" binding:"required"`
+}
+
+// Product Order request
+type ProductOrdersRequest struct {
+	LineItems []LineItem `json:"lineItem" binding:"required"`
+}
+type ProductServiceResponse struct {
+	ProductID string `json:"product_id"`
+	Stock     int    `json:"stock"`
+	PriceID   string `json:"price_id"`
+}
+
+// Product Order request
+type CartOrderRequest struct {
+	LineItems []LineItem `json:"lineItems" binding:"required"`
 }

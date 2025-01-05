@@ -53,7 +53,7 @@ func API(p *products.Conf, k *auth.Keys) *gin.Engine {
 		//fetch PriceId , stock
 		v1.GET("/stock/:productID", h.getProductOrderDetail)
 		v1.GET("/", h.fetchAllProducts)
-		v1.POST("/stock/", h.getProductOrderDetails)
+		v1.POST("/stock", h.getProductOrderDetails)
 
 		v1.Use(m.Authentication())
 

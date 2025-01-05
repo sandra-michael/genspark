@@ -27,8 +27,9 @@ type NewProduct struct {
 
 // keeping it simple this is json which will be returned
 type ProductOrder struct {
-	PriceId string `json:"price_id"`
-	Stock   int    `json:"stock"`
+	ProductId string `json:"product_id"`
+	PriceId   string `json:"price_id"`
+	Stock     int    `json:"stock"`
 }
 
 //required: The roles field is mandatory.
@@ -53,7 +54,7 @@ type ProductOrdersRequest struct {
 type ProductUpdateRequest struct {
 	Name        string `json:"name,omitempty" validate:"omitempty,min=2,max=100"`        // Valid email required
 	Description string `json:"description,omitempty" validate:"omitempty,min=2,max=100"` // Password must be at least 5 characters long
-	//TODO allow when stripe proce update is sorted
+	//TODO allow when stripe price update is sorted
 	//Price       string `json:"price,omitempty" validate:"omitempty,min=2,max=100"`
 	Category string `json:"category,omitempty" validate:"omitempty,min=2,max=100"`
 	Stock    string `json:"stock,omitempty" validate:"omitempty,min=2,max=100"`

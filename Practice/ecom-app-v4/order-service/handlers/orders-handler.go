@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -401,6 +402,257 @@ func (h *Handler) CheckoutWithGrpc(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "Failed to create order"})
 		return
 	}
+	// Respond with the Stripe session ID
+	c.JSON(http.StatusOK, gin.H{"checkout_session_id": sessionStripe.URL})
+}
+
+func (h *Handler) CartCheckout(c *gin.Context) {
+	//TODO: Add the order in the orders table, and mark that as pending
+
+	// Get the traceId from the request for tracking logs
+	traceId := ctxmanage.GetTraceIdOfRequest(c)
+	claims, ok := c.Request.Context().Value(auth.ClaimsKey).(auth.Claims)
+	if !ok {
+		slog.Error("claims not found", slog.String(logkey.TraceID, traceId))
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": http.StatusUnauthorized})
+		return
+	}
+
+	var req CartOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error(
+			"invalid request body",
+			slog.String(logkey.TraceID, traceId), slog.Any(logkey.ERROR, err.Error()))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
+		return
+	}
+
+	// Validate that the list is not empty
+	if len(req.LineItems) < 1 {
+		slog.Error(
+			"empty lineitems",
+			slog.String(logkey.TraceID, traceId))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "Line Items cannot be empty"})
+		return
+	}
+
+	//conver to a map
+	// Convert to map
+	productMap := make(map[string]LineItem)
+
+	var productIds []string
+
+	// Populate the map
+	for _, item := range req.LineItems {
+		productMap[item.ProductId] = item
+		productIds = append(productIds, item.ProductId)
+	}
+
+	// Create channels for goroutine results
+	userChan := make(chan UserServiceResponse, 1) // For customer ID
+
+	if h.client == nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "consul client is not initialized"})
+	}
+
+	go func() {
+
+		address, port, err := consul.GetServiceAddress(h.client, "users")
+		if err != nil {
+			slog.Error("service unavailable", slog.String(logkey.TraceID, traceId),
+				slog.String(logkey.ERROR, err.Error()))
+			userChan <- UserServiceResponse{}
+			return
+		}
+		httpQuery := fmt.Sprintf("http://%s:%d/users/stripe", address, port)
+		slog.Info("httpQuery: "+httpQuery, slog.String(logkey.TraceID, traceId))
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 50*time.Second)
+		defer cancel()
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, httpQuery, nil)
+		if err != nil {
+			slog.Error("error creating request", slog.String(logkey.TraceID, traceId), slog.Any("error", err.Error()))
+			userChan <- UserServiceResponse{}
+			return
+		}
+		authorizationHeader := c.Request.Header.Get("Authorization")
+		req.Header.Set("Authorization", authorizationHeader)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			slog.Error("error fetching user service", slog.String(logkey.TraceID, traceId))
+			userChan <- UserServiceResponse{}
+			return
+		}
+		if resp.StatusCode != http.StatusOK {
+			slog.Error("error fetching stripe id from user service", slog.String(logkey.TraceID, traceId))
+			userChan <- UserServiceResponse{}
+			return
+		}
+
+		defer resp.Body.Close()
+
+		var userServiceResponse UserServiceResponse
+		err = json.NewDecoder(resp.Body).Decode(&userServiceResponse)
+		if err != nil {
+			slog.Error("error binding json", slog.String(logkey.TraceID, traceId), slog.Any(logkey.ERROR, err.Error()))
+			userChan <- UserServiceResponse{}
+			return
+		}
+		// Print the customer Id if fetched successfully
+		slog.Info("successfully fetched stripe customer id", slog.String(logkey.TraceID, traceId))
+		userChan <- userServiceResponse
+	}()
+
+	productChan := make(chan []ProductServiceResponse, 1) // For stock and price information
+	go func() {
+		address, port, err := consul.GetServiceAddress(h.client, "products")
+		if err != nil {
+			slog.Error("service unavailable", slog.String(logkey.TraceID, traceId),
+				slog.String(logkey.ERROR, err.Error()))
+			productChan <- nil
+			return
+		}
+		// Create a JSON body with the list of product IDs
+		fmt.Println("productsId", productIds)
+		fmt.Println(map[string][]string{"productIds": productIds})
+		requestBody, err := json.Marshal(map[string][]string{"productIds": productIds})
+		if err != nil {
+			slog.Error("error marshalling request body",
+				slog.String(logkey.TraceID, traceId),
+				slog.Any("error", err))
+			productChan <- nil
+			return
+		}
+
+		httpURL := fmt.Sprintf("http://%s:%d/products/stock", address, port)
+
+		// Make the HTTP POST request
+		fmt.Println(string(requestBody))
+		resp, err := http.Post(httpURL, "application/json", bytes.NewBuffer(requestBody))
+		if err != nil {
+			slog.Error("error fetching product service",
+				slog.String(logkey.TraceID, traceId),
+				slog.Any("error", err))
+			productChan <- nil
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			slog.Error("error fetching product information", slog.String(logkey.TraceID, traceId))
+			productChan <- nil
+			return
+		}
+		var productServiceResponse []ProductServiceResponse
+		err = json.NewDecoder(resp.Body).Decode(&productServiceResponse)
+		if err != nil {
+			slog.Error("error binding json", slog.String(logkey.TraceID, traceId), slog.Any(logkey.ERROR, err.Error()))
+			productChan <- nil
+			return
+		}
+		fmt.Println("product reso", productServiceResponse)
+
+		productChan <- productServiceResponse
+	}()
+
+	userServiceResponse := <-userChan
+	if userServiceResponse.StripCustomerId == "" {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "error fetching stripe customer id"})
+		return
+	}
+	stockData := <-productChan
+
+	if stockData == nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "error fetching product information"})
+		return
+	}
+	var lineItems []*stripe.CheckoutSessionLineItemParams
+
+	for _, stockVal := range stockData {
+		priceID := stockVal.PriceID
+		stock := stockVal.Stock
+		productID := stockVal.ProductID
+		if stock <= 0 || priceID == "" {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "error fetching product information"})
+			return
+		}
+		//Create line items
+		lineItems = append(lineItems, &stripe.CheckoutSessionLineItemParams{
+			Price: stripe.String(stockVal.PriceID),
+			//Todo make this dynamic
+			//Quantity: stripe.Int64(stockVal.Quantity),
+			Quantity: stripe.Int64(int64(productMap[productID].Quantity)),
+		})
+		//create metadata
+	}
+	//c.JSON(http.StatusOK, gin.H{"customerId": userServiceResponse.StripCustomerId, "price_id": priceID, "stock": stock})
+
+	// Step 1: Retrieve the Stripe secret key from the environment variables
+	sKey := os.Getenv("STRIPE_TEST_KEY")
+	if sKey == "" {
+		slog.Error("Stripe secret key not found", slog.String(logkey.TraceID, traceId))
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Stripe secret key not found"})
+	}
+
+	// Step 2: Assign the Stripe API key to the Stripe library's internal configuration
+	stripe.Key = sKey
+	orderId := uuid.NewString()
+
+	// Convert struct to JSON string
+	reqJSON, err := json.Marshal(req)
+	if err != nil {
+		fmt.Printf("Error marshaling struct: %v\n", err)
+		return
+	}
+	// Proceed to create Stripe checkout session
+	// var lineItems []*stripe.CheckoutSessionLineItemParams
+	// for _, product := range products {
+	// 	lineItems = append(lineItems, &stripe.CheckoutSessionLineItemParams{
+	// 		Price:    stripe.String(product.PriceID),
+	// 		Quantity: stripe.Int64(product.Quantity),
+	// 	})
+	// }
+	//TODO SEND LIST OF PRODUCT IDS
+	params := &stripe.CheckoutSessionParams{
+		Customer:                 stripe.String(userServiceResponse.StripCustomerId),
+		SubmitType:               stripe.String("pay"),
+		Currency:                 stripe.String(string(stripe.CurrencyINR)),
+		BillingAddressCollection: stripe.String("auto"),
+		LineItems:                lineItems,
+		Mode:                     stripe.String(string(stripe.CheckoutSessionModePayment)),
+		SuccessURL:               stripe.String("https://example.com/success"),
+		//ExpiresAt:
+		CancelURL: stripe.String("https://example.com/cancel"),
+		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
+			Metadata: map[string]string{
+				"order_id": orderId,
+				"user_id":  claims.Subject, // userID in jwt token
+				"products": string(reqJSON),
+			},
+		},
+	}
+
+	sessionStripe, err := session.New(params)
+	if err != nil {
+		slog.Error("error creating Stripe checkout session", slog.String(logkey.TraceID, traceId), slog.String(logkey.ERROR, err.Error()))
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "Failed to create Stripe checkout session"})
+		return
+	}
+
+	// Log success operation
+	//TODO change string(reqJSON) to prod id
+	slog.Info("successfully initiated Stripe checkout session", slog.String("Trace ID", traceId), slog.String("ProductID", string(reqJSON)), slog.String("CheckoutSessionID", sessionStripe.ID))
+
+	// Respond with the Stripe session ID
+	//c.JSON(http.StatusOK, gin.H{"checkout_session_id": sessionStripe.URL})
+	userId := claims.Subject
+	ctx := c.Request.Context()
+	//TODO chnge string(reqJSON) for productId
+	err = h.o.CreateOrder(ctx, orderId, userId, productIds[1], sessionStripe.AmountTotal)
+	if err != nil {
+		slog.Error("error creating order", slog.String(logkey.TraceID, traceId), slog.String(logkey.ERROR, err.Error()))
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "Failed to create order"})
+		return
+	}
+
 	// Respond with the Stripe session ID
 	c.JSON(http.StatusOK, gin.H{"checkout_session_id": sessionStripe.URL})
 }

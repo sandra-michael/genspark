@@ -208,13 +208,13 @@ func (c *Conf) GetStripeProductDetail(ctx context.Context, productId string) (Pr
 
 	// SQL query to retrieve the Stripe customer ID for the given user ID
 	query := `
-	select pr.stock as stock, pps.price_id as price_id
+	select pr.id as product_id,pr.stock as stock, pps.price_id as price_id
 	from products pr
 	inner join product_pricing_stripe pps on pr.id = pps.product_id
 	where pr.id = $1
 	`
 	err := c.withTx(ctx, func(tx *sql.Tx) error {
-		err := tx.QueryRowContext(ctx, query, productId).Scan(&prodOrder.Stock, &prodOrder.PriceId)
+		err := tx.QueryRowContext(ctx, query, productId).Scan(&prodOrder.ProductId, &prodOrder.Stock, &prodOrder.PriceId)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("no stripe price id  found for product %s: %w", productId, err)
@@ -244,7 +244,7 @@ func (c *Conf) GetStripeProductDetails(ctx context.Context, productIds []string)
 	//Instead, use `ANY` and the SQL array type instead:
 
 	query := `
-	select pr.stock as stock, pps.price_id as price_id
+	select pr.id as product_id,pr.stock as stock, pps.price_id as price_id
 	from products pr
 	inner join product_pricing_stripe pps on pr.id = pps.product_id
 	where pr.id = ANY($1)
@@ -261,7 +261,7 @@ func (c *Conf) GetStripeProductDetails(ctx context.Context, productIds []string)
 		// Process each row
 		for rows.Next() {
 			var prodOrder ProductOrder
-			if err := rows.Scan(&prodOrder.Stock, &prodOrder.PriceId); err != nil {
+			if err := rows.Scan(&prodOrder.ProductId, &prodOrder.Stock, &prodOrder.PriceId); err != nil {
 				return fmt.Errorf("failed to scan row: %w", err)
 			}
 			prodOrders = append(prodOrders, prodOrder)
