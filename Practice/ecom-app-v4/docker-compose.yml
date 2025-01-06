@@ -104,8 +104,6 @@ services:
       - CONSUL_HTTP_ADDR=consul:8500
     networks:
       - web
-    volumes: #setting the data directory in the project
-      - ./project-db/order-postgres/postgres/:/var/lib/postgresql/data/
 
   product-postgres.sandra:
     image: postgres:16.3-alpine
@@ -117,6 +115,8 @@ services:
       POSTGRES_DB: postgres
     ports:
       - "5434:5432"
+    volumes: #setting the data directory in the project
+      - ./project-db/product-postgres/postgres/:/var/lib/postgresql/data/
     networks:
       - web
 #######################################
@@ -145,6 +145,8 @@ services:
       POSTGRES_DB: postgres
     ports:
       - "5435:5432"
+    volumes: #setting the data directory in the project
+      - ./project-db/order-postgres/postgres/:/var/lib/postgresql/data/
     networks:
       - web
 

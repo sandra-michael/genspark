@@ -15,6 +15,7 @@ import (
 	"product-service/internal/products"
 	"product-service/internal/stores/kafka"
 	"product-service/internal/stores/postgres"
+	email "product-service/mail"
 	"product-service/protohandler"
 	"syscall"
 	"time"
@@ -134,10 +135,20 @@ func startApp() error {
 			//TODO dynamically decrement stock
 			//for now we are decrementing for one product
 			ctx := context.Background()
-			p.DecrementStock(ctx, event.ProductId, event.Quantity)
 			fmt.Println("decrement the stock of the product", event.OrderId)
-			p.UpdateCartStatusForOrderId(ctx, event.OrderId)
+
+			p.DecrementStock(ctx, event.ProductId, event.Quantity)
 			fmt.Println("successfully decremented the stock of the product")
+
+			fmt.Println("moving line items for completed", event.OrderId)
+
+			p.UpdateCartStatusForOrderId(ctx, event.OrderId)
+
+			fmt.Println("line items moved to completed", event.OrderId)
+
+			fmt.Println("Sending confirmation email:  ", event.OrderId)
+			email.SendEmail(event.OrderId)
+			fmt.Println("Sent order confirmation email:  ", event.OrderId)
 
 		}
 	}()

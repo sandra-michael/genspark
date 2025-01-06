@@ -64,8 +64,12 @@ func API(client *consulapi.Client, p *products.Conf, k *auth.Keys) *gin.Engine {
 
 		v1.PATCH("/:productID", m.Authorize(h.updateProduct, auth.RoleAdmin))
 
-		v1.POST("/addtocart", h.addToCart)
-		v1.POST("/checkout", h.checkout)
+		//Cart service calls
+		v1.POST("/cart/addtocart", h.addToCart)
+		v1.POST("/cart/checkout", h.checkout)
+		//TODO TEST THIS CODE
+		v1.GET("/cart/fetchcart", h.fetchCartDetails)
+		v1.DELETE("/cart/:id", h.deleteCartByID)
 
 	}
 

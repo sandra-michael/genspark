@@ -315,28 +315,30 @@ func (h *Handler) CheckoutWithGrpc(c *gin.Context) {
 
 		fmt.Println(int(pr.GetStock()), pr.GetPriceId())
 		productServiceResponse := ProductServiceResponse{ProductID: productID, Stock: int(pr.GetStock()), PriceID: pr.GetPriceId()}
-
+		fmt.Println(productServiceResponse)
 		productChan <- productServiceResponse
 	}()
 
-	// Set a timeout (e.g., 10 seconds)
+	//Set a timeout (e.g., 10 seconds)
 	//TODO remove and test out why product channel is not benig picked up
-	timeout := time.After(100 * time.Second)
+	// timeout := time.After(50 * time.Second)
 
-	select {
+	// select {
 
-	case <-timeout:
-		// Handle the timeout case
-		slog.Error("Timeout waiting for product service response", slog.String(logkey.TraceID, traceId))
-		c.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{"message": "Request to product service timed out"})
-		return
-	}
+	// case <-timeout:
+	// 	// Handle the timeout case
+	// 	slog.Error("Timeout waiting for product service response", slog.String(logkey.TraceID, traceId))
+	// 	c.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{"message": "Request to product service timed out"})
+	// 	return
+	// }
 
 	userServiceResponse := <-userChan
 	if userServiceResponse.StripCustomerId == "" {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "error fetching stripe customer id"})
 		return
 	}
+
+	fmt.Println("******************************** 341 **************************************")
 	stockPriceData := <-productChan
 	priceID := stockPriceData.PriceID
 	stock := stockPriceData.Stock
@@ -344,6 +346,7 @@ func (h *Handler) CheckoutWithGrpc(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "error fetching product information"})
 		return
 	}
+	fmt.Println("******************************** 349 **************************************")
 
 	//c.JSON(http.StatusOK, gin.H{"customerId": userServiceResponse.StripCustomerId, "price_id": priceID, "stock": stock})
 

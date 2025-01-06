@@ -138,6 +138,52 @@ func (c *Conf) FetchCartItems(ctx context.Context, userId string, status StatusE
 
 }
 
+func (c *Conf) FetchCartDetails(ctx context.Context, userId string, status StatusEnum) ([]CartDetails, error) {
+
+	// An album slice to hold data from returned rows.
+	var cartLines []CartDetails
+
+	// Use a transaction to ensure consistency
+	err := c.withTx(ctx, func(tx *sql.Tx) error {
+
+		// Step 3: Perform the update since the `updated_at` condition is met
+		queryFetch := `
+		select id,order_id,product_id, quantity
+		from cart
+		WHERE user_id = $1 AND status = $2;
+		`
+
+		rows, err := tx.Query(queryFetch, userId, status)
+		if err != nil {
+			return fmt.Errorf("failed to fetch cart items: %w", err)
+		}
+
+		defer rows.Close()
+
+		// Loop through rows, using Scan to assign column data to struct fields.
+		for rows.Next() {
+			var line CartDetails
+
+			if err := rows.Scan(&line.ID, &line.OrderId, &line.ProductID, &line.Quantity); err != nil {
+				return err
+			}
+			cartLines = append(cartLines, line)
+		}
+		if err = rows.Err(); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// If the transaction or insertion fails, return an error.
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch products: %w", err)
+	}
+
+	return cartLines, nil
+
+}
+
 func (c *Conf) UpdateCartStatusFromInProgressToPending(ctx context.Context, userId string) error {
 
 	updatedAt := time.Now().UTC() // Current timestamp
@@ -209,5 +255,40 @@ func (c *Conf) UpdateCartStatusForOrderId(ctx context.Context, orderId string) e
 	}
 
 	// Return nil if the update is successful or skipped gracefully
+	return nil
+}
+
+func (c *Conf) DeleteCartByIDIfPending(ctx context.Context, cartID string, userId string) error {
+	// Use a transaction to ensure consistency
+	err := c.withTx(ctx, func(tx *sql.Tx) error {
+		// Prepare the DELETE query
+		queryDelete := `
+			DELETE FROM cart
+			WHERE id = $1 AND status = $3 AND user_id = $2;
+		`
+
+		// Execute the DELETE query
+		result, err := tx.Exec(queryDelete, cartID, userId, StatusInProgress)
+		if err != nil {
+			return fmt.Errorf("failed to delete cart item with ID %s: %w", cartID, err)
+		}
+
+		// Check if any rows were affected
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("failed to fetch rows affected for cart item with ID %s: %w", cartID, err)
+		}
+		if rowsAffected == 0 {
+			return fmt.Errorf("no cart item found with ID %s", cartID)
+		}
+
+		return nil
+	})
+
+	// If the transaction fails, return an error
+	if err != nil {
+		return fmt.Errorf("failed to delete cart item: %w", err)
+	}
+
 	return nil
 }

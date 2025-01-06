@@ -109,3 +109,10 @@ type OrderRequest struct {
 type FetchCartResponse struct {
 	LineItems []LineItem `json:"lineItems" binding:"required"`
 }
+
+type CartDetails struct {
+	ID        string
+	OrderId   string
+	ProductID string
+	Quantity  int
+}

@@ -3,7 +3,9 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -154,6 +156,7 @@ func (h *Handler) checkout(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "There are no items in the cart ",
 		})
+		return
 	}
 
 	var orderReq products.OrderRequest
@@ -254,4 +257,139 @@ func (h *Handler) checkout(c *gin.Context) {
 
 	c.JSON(http.StatusOK, orderServiceResponse)
 
+}
+
+func (h *Handler) fetchCartDetails(c *gin.Context) {
+
+	traceId := ctxmanage.GetTraceIdOfRequest(c)
+
+	if c.Request.ContentLength > 5*1024 {
+		// Log an error indicating that the request body size limit was breached.
+		slog.Error("request body limit breached",
+			slog.String(logkey.TraceID, traceId),
+			slog.Int64("Size Received", c.Request.ContentLength),
+		)
+
+		// Respond with HTTP 400 Bad Request and an appropriate error message.
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "payload exceeding size limit",
+		})
+		return
+	}
+
+	claims, err := ctxmanage.GetAuthClaimsFromContext(c.Request.Context())
+	if err != nil {
+		slog.Error(
+			"missing claims",
+			slog.String(logkey.TraceID, traceId), slog.Any(logkey.ERROR, err.Error()))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "User Id is required"})
+		return
+	}
+
+	// FETCH USER ID
+
+	userId := claims.Subject
+
+	ctx := c.Request.Context()
+
+	// Check if items are inProgress for checkout
+	// Attempt to insert the new user into the database using the `InsertUser` method.
+	cartRet, err := h.p.FetchCartDetails(ctx, userId, products.StatusInProgress)
+	if err != nil {
+		// Log an error if user creation fails, along with the trace ID and specific error message.
+		slog.Error("error in fetching the cart",
+			slog.String(logkey.TraceID, traceId),
+			slog.String(logkey.ERROR, err.Error()),
+		)
+
+		// Respond with HTTP 500 Internal Server Error indicating that user creation failed.
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "fetch Cart Failed",
+		})
+		return
+	}
+	if len(cartRet) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Empty Cart",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, cartRet)
+
+}
+
+func (h *Handler) deleteCartByID(c *gin.Context) {
+	traceId := ctxmanage.GetTraceIdOfRequest(c)
+
+	// Ensure the request body isn't too large
+	if c.Request.ContentLength > 5*1024 {
+		slog.Error("request body limit breached",
+			slog.String(logkey.TraceID, traceId),
+			slog.Int64("Size Received", c.Request.ContentLength),
+		)
+
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "payload exceeding size limit",
+		})
+		return
+	}
+
+	// Extract claims and validate user authentication
+	claims, err := ctxmanage.GetAuthClaimsFromContext(c.Request.Context())
+	if err != nil {
+		slog.Error("missing claims",
+			slog.String(logkey.TraceID, traceId), slog.Any(logkey.ERROR, err.Error()))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "User Id is required"})
+		return
+	}
+
+	// Extract user ID from claims
+	userId := claims.Subject
+
+	// Extract cart ID from request URL parameter
+	cartID := c.Param("id")
+	if cartID == "" {
+		slog.Error("missing cart ID",
+			slog.String(logkey.TraceID, traceId))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Cart ID is required",
+		})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Call the service layer to delete the cart item
+	err = h.p.DeleteCartByIDIfPending(ctx, cartID, userId)
+	if err != nil {
+		// Handle specific errors (e.g., no rows affected)
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.Warn("no cart item found to delete",
+				slog.String(logkey.TraceID, traceId),
+				slog.String("cartID", cartID),
+			)
+
+			c.JSON(http.StatusNotFound, gin.H{
+				"message": "Cart item not found",
+			})
+			return
+		}
+
+		// Log any unexpected errors
+		slog.Error("failed to delete cart item",
+			slog.String(logkey.TraceID, traceId),
+			slog.String(logkey.ERROR, err.Error()),
+		)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to delete cart item",
+		})
+		return
+	}
+
+	// Respond with success
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Cart item successfully deleted",
+	})
 }

@@ -180,6 +180,14 @@ func (h *Handler) fetchAllProducts(c *gin.Context) {
 		return
 	}
 
+	if len(products) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "There are no products",
+		})
+		return
+
+	}
+
 	// Respond with HTTP 200 OK and return the created user's data as JSON.
 	c.JSON(http.StatusOK, products)
 }
